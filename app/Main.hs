@@ -1,7 +1,7 @@
 module Main (main) where
 
-import Primes (someFunc)
+import Primes (realSieve)
 
 
 main :: IO ()
-main = someFunc
+main = print $ realSieve (10 ^ (2 :: Int) :: Int)
