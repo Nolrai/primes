@@ -24,10 +24,16 @@ library
   hs-source-dirs:      src
   exposed-modules:     Primes
                        Prelude
+                       Reified
 
   build-depends:       base-noprelude ^>= 4.13.0.0
                      , relude
                      , vector
+                     , template-haskell >= 2.15.0.0
+                     , attoparsec
+                     , text
+                     , gauge
+                     , console-program
 
   ghc-options:         -Wall
                        -Wincomplete-uni-patterns
@@ -48,7 +54,9 @@ executable primes
 
   build-depends:       base-noprelude ^>= 4.13.0.0
                      , primes
+                     , vector
                      , relude
+                     , console-program
 
   ghc-options:         -Wall
                        -threaded
@@ -70,10 +78,14 @@ test-suite primes-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
-
+  other-modules:       PrimesSpec
   build-depends:       base-noprelude ^>= 4.13.0.0
                      , primes
                      , relude
+                     , hspec
+                     , hspec-golden
+                     , QuickCheck
+                     , vector
 
   ghc-options:         -Wall
                        -threaded
