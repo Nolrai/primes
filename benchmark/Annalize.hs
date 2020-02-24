@@ -1,21 +1,29 @@
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Annalize
   ( annalize,
   )
 where
 
+import Control.Monad as M
 import Criterion.Types as C
 import Data.Aeson
 import Data.Aeson.Types
 import qualified Data.List as List
 import Data.Map as Map
 import Data.Vector as V
--- import Graphics.Gnuplot.Simple
+import Data.Vector.Unboxed as UV
+import Graphics.EasyPlot as E
+import Statistics.Regression
 import Statistics.Types
+import Text.Printf
 
 data RecordFile
   = RecordFile
@@ -38,7 +46,7 @@ parseReports :: Array -> Parser (V.Vector Report)
 parseReports v =
   V.mapM parseJSON v
 
-annalize :: FilePath -> IO any
+annalize :: FilePath -> IO ()
 annalize path =
   do
     (rf_ :: Either String RecordFile) <- eitherDecodeFileStrict path
@@ -46,36 +54,96 @@ annalize path =
       Left str -> die str
       Right rf ->
         do
-          let table = toTable (rf_reports rf)
-          -- plotList [] table
-          die $ show table
+          let runs :: Map String [(Double, Double)] =
+                toRuns $ rf_reports rf
+          let loglogruns = fmap toLogLog <$> runs
+          let loglogGraphs = mkGraphs loglogruns
+          let fitsOnLogLog = fit loglogruns
+          let fitGraphs = (mkFitGraphs $ fst `fmap` fitsOnLogLog)
+          printData fitsOnLogLog
+          let monomialFits = mkFitGraphs $ (expExp . fst) `fmap` fitsOnLogLog
+          let monomialOptions = [Range (10 ^ 3) (10 ^ 6), Step (10 ^ 3)]
+          plot X11 (loglogGraphs <> fitGraphs [Range 3 6])
+          plot X11 (mkGraphs runs <> monomialFits monomialOptions)
+          pure ()
 
-toTable :: Vector Report -> [(Int, Int, Int, Int)]
-toTable =
-  fromMap . splitIntoRuns . changeUnits . toMap . fmap toTuple
+-- convert a linear fit on the loglog graph to a monomial fit on the original graph
+expExp :: Line Double -> Monomial Double
+expExp (Line {..}) = Monomial {multiplier = 10 ** yIntercept, power = slope}
 
-fromMap ::
-  forall a c.
-  (Show c) =>
-  Map a (Map String c) ->
-  [(a, c, c, c)]
-fromMap = fmap to4tuple . Map.toList . fmap toTripple
+data Line t = Line {slope :: t, yIntercept :: t}
 
-to4tuple :: (a, (c, c, c)) -> (a, c, c, c)
-to4tuple = \(x, (y, z, w)) -> (x, y, z, w)
+data Monomial t = Monomial {multiplier :: t, power :: t}
 
-toTripple :: (Show c) => Map String c -> (c, c, c)
-toTripple m =
-  case Map.toList m of
-    [("fakeSieve", fake), ("naive", naive), ("realSieve", real)] ->
-      (naive, fake, real) --change so naive is first
-    _ -> error $ "toTripple recived " <> show (Map.toList m)
+class At t where
+  type X t
+  at :: t -> X t -> X t
+
+instance At (Line Double) where
+  type X (Line Double) = Double
+  (Line {..}) `at` x = slope * x + yIntercept
+
+instance At (Monomial Double) where
+  type X (Monomial Double) = Double
+  (Monomial {..}) `at` x = multiplier * (x ** power)
+
+printData :: Map String (Line Double, Double) -> IO ()
+printData m =
+  ( \(name, (Line {..}, rSquare)) ->
+      printf "%s: ~ %.2f * n ^ %.2f with R^2 = %1.3f\n" name (10 ** yIntercept) slope rSquare
+  )
+    `M.mapM_` Map.toList m
+
+fit ::
+  Map String [(Double, Double)] ->
+  Map String (Line Double, Double)
+fit m = go <$> m
+  where
+    go l =
+      let (xs, ys) = UV.unzip (UV.fromList l)
+       in let (UV.toList -> [slope, yIntercept], rSquare) = olsRegress [xs] ys
+           in (Line {..}, rSquare)
+
+toLogLog :: (Double, Double) -> (Double, Double)
+toLogLog (x, y) = let f = (logBase 10) in (f x, f y)
+
+mkFitGraphs ::
+  (At fun, X fun ~ Double) =>
+  Map String fun ->
+  [Option2D Double Double] ->
+  [Graph2D Double Double]
+mkFitGraphs fits option2D =
+  go <$> List.zip (Color <$> [Red, Blue, Magenta]) (Map.toList fits)
+  where
+    go (color, (name, (fit))) =
+      Function2D
+        [Title ("fit for " <> name), color, Style Lines]
+        option2D
+        (fit `at`)
+
+mkGraphs :: Map String [(Double, Double)] -> [Graph2D Double Double]
+mkGraphs runs =
+  go <$> List.zip (Color <$> [Red, Blue, Magenta]) (Map.toList runs)
+  where
+    go :: (E.Option, (String, [(Double, Double)])) -> Graph2D Double Double
+    go (color, (name, run)) =
+      Data2D [Title name, color, Style Points] [] run
+
+onPair :: (a -> b) -> (a, a) -> (b, b)
+onPair f (x, y) = (f x, f y)
+
+toRuns :: V.Vector Report -> Map String [(Double, Double)]
+toRuns =
+  fmap Map.toList . splitIntoRuns . changeUnits . toMap . fmap toTuple
+
+changeUnits :: Map k Double -> Map k Double
+changeUnits = (fmap (* 10 ** 6.0))
 
 splitIntoRuns ::
   forall a b c.
   (Ord a, Ord b, Show a, Show b, Show c) =>
   Map (a, b) c ->
-  Map a (Map b c)
+  Map b (Map a c)
 splitIntoRuns oldMap =
   Map.foldlWithKey'
     addItemToSubMap
@@ -85,39 +153,30 @@ splitIntoRuns oldMap =
 addItemToSubMap ::
   forall a b c.
   (Ord a, Ord b, Show a, Show b, Show c) =>
-  Map a (Map b c) ->
+  Map b (Map a c) ->
   (a, b) ->
   c ->
-  Map a (Map b c)
+  Map b (Map a c)
 addItemToSubMap soFar (a, b) c =
   insertWith
     (unionWithKey err)
-    a
-    (Map.singleton b c)
+    b
+    (Map.singleton a c :: Map a c)
     soFar
   where
-    err :: forall t. b -> c -> c -> t
-    err name _one _two =
+    err _one _two =
       error $
         "trying to overwrite " <> show a
           <> " in column "
-          <> show name
-
-toLogLog :: (Floating a) => Map Int a -> Map Float a
-toLogLog =
-  mapKeysMonotonic (logBase 10 . fromIntegral)
-    . fmap (logBase 10)
-
-changeUnits :: Map k Double -> Map k Int
-changeUnits m = (floor . (* 10 ^ (9 :: Int))) <$> m
+          <> show b
 
 toMap :: (Ord a, Ord b) => V.Vector (a, b, c) -> Map (a, b) c
 toMap = Map.fromList . V.toList . fmap (\(a, b, c) -> ((a, b), c))
 
-toTuple :: Report -> (Int, String, Double)
+toTuple :: Report -> (Double, String, Double)
 toTuple Report {..} =
   case reads (List.drop 1 n') of
-    [(n, "")] -> (n, name, mean)
+    [(n, "")] -> (fromInteger . toInteger $ n, name, mean)
     _ -> error $ "n' is " <> show n'
   where
     (name, n') = List.break (== '/') reportName

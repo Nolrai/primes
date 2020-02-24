@@ -116,7 +116,7 @@ benchmark primes-benchmark
                      , optparse-applicative
                      , vector
                      , containers
-                     , gnuplot
+                     , easyplot
                      , statistics
                      , temporary
                      , aeson
