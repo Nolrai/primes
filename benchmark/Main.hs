@@ -1,28 +1,61 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Main (main) where
 
-import Gauge.Main
-import Gauge.Main.Options
-import System.Environment
-import Reified (reifiedFunctions, toPreBench, Reified(..))
+module Main
+  ( main,
+  )
+where
 
+import Annalize
+import Criterion
+import Criterion.Main
+import Criterion.Main.Options
+import Criterion.Types
+import qualified Data.List as List
+import Options.Applicative
+import Reified (Reified (..), reifiedFunctions, toPreBench)
+import System.IO (hClose)
+import System.IO.Temp
+
+opts :: ParserInfo Mode
+opts =
+  info
+    (parseWith defaultConfig <**> helper)
+    ( fullDesc
+        <> progDesc "benchmarks for Primes"
+        <> header "header"
+    )
 
 main :: IO ()
 main =
   do
-  argv <- getArgs
-  let (config, others) = parseWith defaultConfig argv
-  putStrLn $ "others: " <> show others
-  putStrLn $ "running with config = " <> show config
-  defaultMainWith config benchmarks
+    mode <- execParser opts
+    putStrLn $ "running with mode = " <> show mode
+    case mode of
+      Run config' matchType givens ->
+        case jsonFile config' of
+          Just path -> runBenchmarks mode path
+          Nothing -> withTempFile "." "bench.json" $
+            \path handle ->
+              do
+                let newConfig = config' {jsonFile = Just path}
+                let newMode = Run newConfig matchType givens
+                hClose handle
+                runBenchmarks newMode path
+      _ -> runBenchmarks mode "bench.json"
 
-benchmarks = onReified <$> take 3 reifiedFunctions
+runBenchmarks mode path =
+  runMode mode benchmarks >> annalize path
+
+benchmarks :: [Benchmark]
+benchmarks = onReified <$> List.take 3 reifiedFunctions
 
 onReified :: Reified IO -> Benchmark
-onReified (Reified name _description function)
-  = bgroup name $
-  do
-  (scale :: Int) <- [1..3]
-  (digit :: Int) <- [1..9]
-  let size = (digit * (10 ^ scale)) + 1
-  pure . bench (show size) $ toPreBench function size
+onReified (Reified name _description function) =
+  bgroup name $
+    do
+      (nScale :: Int) <- [10 .. 50] -- in decibels effectively
+      let floatingNScale :: Float = (fromIntegral nScale / 10)
+      let floatingN = 10 ** floatingNScale
+      let n :: Int = ceiling floatingN + 1
+      pure . bench (show n) $ toPreBench function n

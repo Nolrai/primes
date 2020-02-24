@@ -9,12 +9,18 @@ main :: IO ()
 main = single commands
 
 commands :: Tree (Command IO)
-commands = Node
-  (command "usage" "" . io
-    $ putStrLn "No command given." >> (showUsage commands))
-  (flip Node [] . toCommand <$> reifiedFunctions)
+commands =
+  Node
+    ( command "usage" "" . io $
+        putStrLn "No command given." >> (showUsage commands)
+    )
+    (flip Node [] . toCommand <$> reifiedFunctions)
   where
-  toCommand :: Reified IO -> Command IO
-  toCommand (Reified name description function) =
-    command name description
-      (toAction function)
+    toCommand :: Reified IO -> Command IO
+    -- the r prefix is to prevent shadowing.
+    -- (r for reified)
+    toCommand (Reified rName rDescription rFunction) =
+      command
+        rName
+        rDescription
+        (toAction rFunction)

@@ -1,22 +1,27 @@
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards #-}
 
-module Reified where
+module Reified
+  ( Reified (..),
+    ToPreBench (..),
+    ToAction (..),
+    reifiedFunctions,
+  )
+where
 
+import Criterion.Main
 import Data.Vector.Unboxed as V
+import Primes
 import System.Console.Argument
 import System.Console.Command
-import System.Console.Program
-import Gauge.Benchmark
-
-import Primes
 
 data Reified m where
-  Reified :: forall a m
-    . (ToPreBench a, ToAction m a) =>
+  Reified ::
+    forall a m.
+    (ToPreBench a, ToAction m a) =>
     String ->
     String ->
     a ->
@@ -60,10 +65,12 @@ instance ToPreBench (Int -> Int -> Vector Int) where
 
 reifiedFunctions :: MonadIO m => [Reified m]
 reifiedFunctions =
-  [Reified "naive" "just primality testing" (naive :: Int -> [Int])
-  , Reified "fakeSieve" "simple but slow psudo sieve"
-    (fakeSieve :: Int -> [Int])
-  , Reified "realSieve" "fast but memory hog sieve" realSieve
-  , Reified "multiples" "used in realSieve" multiples
-  , Reified "isPrime" "is the number prime?" (isPrime :: Int -> Bool)
+  [ Reified "naive" "just primality testing" (naive :: Int -> [Int]),
+    Reified
+      "fakeSieve"
+      "simple but slow psudo sieve"
+      (fakeSieve :: Int -> [Int]),
+    Reified "realSieve" "fast but memory hog sieve" realSieve,
+    Reified "multiples" "used in realSieve" multiples,
+    Reified "isPrime" "is the number prime?" (isPrime :: Int -> Bool)
   ]
