@@ -43,8 +43,7 @@ instance FromJSON RecordFile where
         pure RecordFile {..}
 
 parseReports :: Array -> Parser (V.Vector Report)
-parseReports v =
-  V.mapM parseJSON v
+parseReports = V.mapM parseJSON
 
 annalize :: FilePath -> IO ()
 annalize path =
@@ -59,7 +58,7 @@ annalize path =
           let loglogruns = fmap toLogLog <$> runs
           let loglogGraphs = mkGraphs loglogruns
           let fitsOnLogLog = fit loglogruns
-          let fitGraphs = (mkFitGraphs $ fst `fmap` fitsOnLogLog)
+          let fitGraphs = mkFitGraphs $ fst `fmap` fitsOnLogLog
           printData fitsOnLogLog
           let monomialFits = mkFitGraphs $ (expExp . fst) `fmap` fitsOnLogLog
           let monomialOptions = [Range (10 ^ 3) (10 ^ 6), Step (10 ^ 3)]
@@ -69,7 +68,7 @@ annalize path =
 
 -- convert a linear fit on the loglog graph to a monomial fit on the original graph
 expExp :: Line Double -> Monomial Double
-expExp (Line {..}) = Monomial {multiplier = 10 ** yIntercept, power = slope}
+expExp Line {..} = Monomial {multiplier = 10 ** yIntercept, power = slope}
 
 data Line t = Line {slope :: t, yIntercept :: t}
 
@@ -81,11 +80,11 @@ class At t where
 
 instance At (Line Double) where
   type X (Line Double) = Double
-  (Line {..}) `at` x = slope * x + yIntercept
+  Line {..} `at` x = slope * x + yIntercept
 
 instance At (Monomial Double) where
   type X (Monomial Double) = Double
-  (Monomial {..}) `at` x = multiplier * (x ** power)
+  Monomial {..} `at` x = multiplier * (x ** power)
 
 printData :: Map String (Line Double, Double) -> IO ()
 printData m =
@@ -105,7 +104,7 @@ fit m = go <$> m
            in (Line {..}, rSquare)
 
 toLogLog :: (Double, Double) -> (Double, Double)
-toLogLog (x, y) = let f = (logBase 10) in (f x, f y)
+toLogLog (x, y) = let f = logBase 10 in (f x, f y)
 
 mkFitGraphs ::
   (At fun, X fun ~ Double) =>
@@ -115,7 +114,7 @@ mkFitGraphs ::
 mkFitGraphs fits option2D =
   go <$> List.zip (Color <$> [Red, Blue, Magenta]) (Map.toList fits)
   where
-    go (color, (name, (fit))) =
+    go (color, (name, fit)) =
       Function2D
         [Title ("fit for " <> name), color, Style Lines]
         option2D
@@ -137,18 +136,17 @@ toRuns =
   fmap Map.toList . splitIntoRuns . changeUnits . toMap . fmap toTuple
 
 changeUnits :: Map k Double -> Map k Double
-changeUnits = (fmap (* 10 ** 6.0))
+changeUnits = fmap (* 10 ** 6.0)
 
 splitIntoRuns ::
   forall a b c.
   (Ord a, Ord b, Show a, Show b, Show c) =>
   Map (a, b) c ->
   Map b (Map a c)
-splitIntoRuns oldMap =
+splitIntoRuns =
   Map.foldlWithKey'
     addItemToSubMap
     mempty
-    oldMap
 
 addItemToSubMap ::
   forall a b c.

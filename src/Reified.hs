@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Reified
   ( Reified (..),
@@ -55,10 +54,10 @@ class ToPreBench a where
   toPreBench :: a -> Int -> Benchmarkable
 
 instance ToPreBench (Int -> [Int]) where
-  toPreBench a n = nf a n
+  toPreBench = nf
 
 instance ToPreBench (Int -> Bool) where
-  toPreBench a n = nf a n
+  toPreBench = nf
 
 instance ToPreBench (Int -> Int -> Vector Int) where
   toPreBench a n = nf (uncurry a) (n * n * 10, n)

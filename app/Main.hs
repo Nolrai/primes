@@ -12,7 +12,7 @@ commands :: Tree (Command IO)
 commands =
   Node
     ( command "usage" "" . io $
-        putStrLn "No command given." >> (showUsage commands)
+        putStrLn "No command given." >> showUsage commands
     )
     (flip Node [] . toCommand <$> reifiedFunctions)
   where
