@@ -24,9 +24,16 @@ library
   hs-source-dirs:      src
   exposed-modules:     Primes
                        Prelude
+                       Reified
 
-  build-depends:       base-noprelude ^>= 4.13.0.0
+  build-depends:       base-noprelude
                      , relude
+                     , vector
+                     , template-haskell
+                     , attoparsec
+                     , text
+                     , criterion
+                     , console-program
 
   ghc-options:         -Wall
                        -Wincomplete-uni-patterns
@@ -45,9 +52,11 @@ executable primes
   hs-source-dirs:      app
   main-is:             Main.hs
 
-  build-depends:       base-noprelude ^>= 4.13.0.0
+  build-depends:       base-noprelude
                      , primes
+                     , vector
                      , relude
+                     , console-program
 
   ghc-options:         -Wall
                        -threaded
@@ -69,10 +78,14 @@ test-suite primes-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
-
-  build-depends:       base-noprelude ^>= 4.13.0.0
+  other-modules:       PrimesSpec
+  build-depends:       base-noprelude
                      , primes
                      , relude
+                     , hspec
+                     , hspec-golden
+                     , QuickCheck
+                     , vector
 
   ghc-options:         -Wall
                        -threaded
@@ -94,11 +107,20 @@ benchmark primes-benchmark
   type:                exitcode-stdio-1.0
   hs-source-dirs:      benchmark
   main-is:             Main.hs
+  other-modules:       Annalize
 
-  build-depends:       base-noprelude ^>= 4.13.0.0
-                     , gauge
+  build-depends:       base-noprelude
+                     , criterion
                      , primes
                      , relude
+                     , optparse-applicative
+                     , vector
+                     , containers
+                     , easyplot
+                     , statistics
+                     , temporary
+                     , aeson
+                     , text
 
   ghc-options:         -Wall
                        -threaded
@@ -108,7 +130,6 @@ benchmark primes-benchmark
                        -Wincomplete-record-updates
                        -Wcompat
                        -Widentities
-                       -Wredundant-constraints
                        -fhide-source-paths
                        -Wmissing-export-lists
                        -Wpartial-fields

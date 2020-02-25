@@ -1,3 +1,27 @@
-resolver: nightly-2019-12-25
-
-extra-deps: [base-noprelude-4.13.0.0]
+# Frozen version of resolver
+resolver:
+  size: 489011
+  url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/15/1.yaml
+  sha256: d4ecc42b7125d68e4c3c036a08046ad0cd02ae0d9efbe3af2223a00ff8cc16f3
+# Frozen version of extra-deps
+extra-deps:
+- hackage: base-noprelude-4.13.0.0@sha256:3cccbfda38e1422ca5cc436d58858ba51ff9114d2ed87915a6569be11e4e5a90,6842
+  pantry-tree:
+    size: 112
+    sha256: 90db92c8401880187ce642c5345407bcbd9546ea235524dd445cab2566ee3db1
+- hackage: console-program-0.4.2.3@sha256:02bf3de0af0073be13620de48f7847584f43774f53c864af0bfc70baadebe3a7,2136
+  pantry-tree:
+    size: 634
+    sha256: cab131eb0a58e55d8e6e2db1654bdd9f78c2e796ffb5002e70cb6f416c1afb4b
+- hackage: ansi-terminal-0.9.1@sha256:48f53532d0f365ffa568c8cf0adc84c66f800a7d80d3329e4f04fa75392f4af1,3225
+  pantry-tree:
+    size: 1461
+    sha256: 4686b1fdd2b74598eb83d35f447e4520d58d6534b5277a6f2bfaaa258bf1f833
+- hackage: parsec-extra-0.2.0.0@sha256:47f16e5d00cb62db52d126903787dcccc94d500cfbcb54316f5db00f31da4fa2,735
+  pantry-tree:
+    size: 225
+    sha256: 8d8d15ac5aca977855d1fe89f3f23ecbbddc604e3cb887af5c27b540dba49ffc
+- hackage: easyplot-1.0@sha256:3fec6ccf425b370ab668eb342bc4cd92777880653e27a982db7b225fd007cb2b,1936
+  pantry-tree:
+    size: 219
+    sha256: a5de94b54a51732bf70a601fca8c905fe074ecf870ea573db36d53a3bbb282f4
