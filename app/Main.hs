@@ -1,7 +1,6 @@
 module Main (main) where
 
 import Reified
-import System.Console.Argument
 import System.Console.Command
 import System.Console.Program
 

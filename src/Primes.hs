@@ -28,9 +28,8 @@ fakeSieve :: forall t. Integral t => t -> [t]
 fakeSieve upperBound = go [2 .. (upperBound - 1)]
   where
     go :: [t] -> [t]
-    go (x : xs) = upToSquare L.++ L.filter (\n -> n `mod` x == 0) (go rest)
+    go (x : xs) = x : go (L.filter (\n -> n `mod` x /= 0) xs)
       where
-        (upToSquare, rest) = L.span (< x * x) xs
     go [] = []
 
 realSieve :: HasCallStack => Int -> [Int]

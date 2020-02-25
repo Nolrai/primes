@@ -55,3 +55,15 @@ spec =
     describe (show 'naive)
       $ it "produces the primes less then 100"
       $ naive 100 `shouldBe` primesLessThen100
+    describe (show 'fakeSieve) $ do
+      it ("pruduces the same output as " <> show 'naive) . property $
+        \(Positive (n :: Int)) ->
+          fakeSieve (n + 1) `shouldBe` naive (n + 1)
+      it "produces the primes less then 100" $
+        fakeSieve 100 `shouldBe` primesLessThen100
+    describe (show 'realSieve) $ do
+      it ("pruduces the same output as " <> show 'naive) . property $
+        \(Positive (n :: Int)) ->
+          realSieve (n + 1) `shouldBe` naive (n + 1)
+      it "produces the primes less then 100" $
+        realSieve 100 `shouldBe` primesLessThen100
